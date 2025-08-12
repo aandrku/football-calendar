@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/joho/godotenv"
 )
 
@@ -28,22 +29,7 @@ func main() {
 		config: c,
 	}
 
-	leagues, err := fn.readLeagues()
-	if err != nil {
-		log.Fatalf("There was an unrecoverable error: %v", err)
-	}
-
-	m, err := fn.getModels(leagues)
-	if err != nil {
-		log.Fatalf("There was an unrecoverable error: %v", err)
-
-	}
-
-	err = notifyUser(m, c)
-	if err != nil {
-		log.Fatalf("There was an error while sending a text to user %v", err)
-	}
-
+	lambda.Start(fn.handleRequest)
 }
 
 type League struct {
@@ -56,6 +42,25 @@ type League struct {
 // Before being used, function must be loaded with configuration.
 type function struct {
 	config Config
+}
+
+func (fn function) handleRequest() {
+	leagues, err := fn.readLeagues()
+	if err != nil {
+		log.Fatalf("There was an unrecoverable error: %v", err)
+	}
+
+	m, err := fn.getModels(leagues)
+	if err != nil {
+		log.Fatalf("There was an unrecoverable error: %v", err)
+
+	}
+
+	err = fn.notifyUser(m)
+	if err != nil {
+		log.Fatalf("There was an error while sending a text to user %v", err)
+	}
+
 }
 
 func (fn function) readLeagues() ([]League, error) {
@@ -108,6 +113,7 @@ func (fn function) getModels(leagues []League) ([]Model, error) {
 			if err != nil {
 				log.Printf("error making a request while fetching %q league data %v", l.Name, err)
 			}
+			defer res.Body.Close()
 
 			dec := json.NewDecoder(res.Body)
 
@@ -146,7 +152,7 @@ func (fn function) getModels(leagues []League) ([]Model, error) {
 	return models, nil
 }
 
-func notifyUser(models []Model, config Config) error {
+func (fn function) notifyUser(models []Model) error {
 	type RequestBody struct {
 		ChatID    string `json:"chat_id"`
 		Text      string `json:"text"`
@@ -161,10 +167,10 @@ func notifyUser(models []Model, config Config) error {
 		b.WriteRune('\n')
 	}
 
-	url := fmt.Sprintf(config.telegramEndpoint, config.botToken)
+	url := fmt.Sprintf(fn.config.telegramEndpoint, fn.config.botToken)
 
 	rb := RequestBody{
-		ChatID:    config.chatID,
+		ChatID:    fn.config.chatID,
 		Text:      b.String(),
 		ParseMode: "Markdown",
 	}
