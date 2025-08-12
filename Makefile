@@ -28,7 +28,7 @@ update-config:
 
 .PHONY: invoke
 invoke:
-	aws lambda invoke --function-name footballFixtures
+	aws lambda invoke --function-name footballFixtures response.json
 
 
 .PHONY: delete
