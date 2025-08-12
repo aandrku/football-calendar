@@ -24,13 +24,16 @@ func main() {
 	}
 
 	c := LoadConfig()
+	fn := function{
+		config: c,
+	}
 
-	leagues, err := readLeagues(c)
+	leagues, err := fn.readLeagues()
 	if err != nil {
 		log.Fatalf("There was an unrecoverable error: %v", err)
 	}
 
-	m, err := getModels(leagues, c)
+	m, err := fn.getModels(leagues)
 	if err != nil {
 		log.Fatalf("There was an unrecoverable error: %v", err)
 
@@ -48,10 +51,17 @@ type League struct {
 	Name string `json:"name"`
 }
 
-func readLeagues(config Config) ([]League, error) {
+// function provides methods that implement AWS lambda function functionality.
+//
+// Before being used, function must be loaded with configuration.
+type function struct {
+	config Config
+}
+
+func (fn function) readLeagues() ([]League, error) {
 	var leagues []League
 
-	f, err := os.Open(config.leaguesFile)
+	f, err := os.Open(fn.config.leaguesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +77,8 @@ func readLeagues(config Config) ([]League, error) {
 
 }
 
-func getModels(leagues []League, config Config) ([]Model, error) {
-	c := config.client
+func (fn function) getModels(leagues []League) ([]Model, error) {
+	c := fn.config.client
 
 	models := make([]Model, 0, len(leagues))
 	var lock sync.Mutex
@@ -77,19 +87,19 @@ func getModels(leagues []League, config Config) ([]Model, error) {
 	for _, l := range leagues {
 		wg.Add(1)
 		go func() {
-			req, err := http.NewRequest("GET", config.endpoint, nil)
+			req, err := http.NewRequest("GET", fn.config.endpoint, nil)
 			if err != nil {
 				log.Printf("error creating a request while fetching %q league data %v", l.Name, err)
 			}
 
-			req.Header.Add("x-rapidapi-key", config.apiKey)
+			req.Header.Add("x-rapidapi-key", fn.config.apiKey)
 
 			q := req.URL.Query()
 
 			q.Set("league", l.ID)
 			q.Set("date", time.Now().Format("2006-01-02"))
-			q.Set("season", config.season)
-			q.Set("timezone", config.timezone)
+			q.Set("season", fn.config.season)
+			q.Set("timezone", fn.config.timezone)
 
 			// forgot to set the actual query
 			req.URL.RawQuery = q.Encode()
