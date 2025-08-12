@@ -1,6 +1,9 @@
 package main
 
-import "os"
+import (
+	"net/http"
+	"os"
+)
 
 type Config struct {
 	endpoint         string
@@ -8,6 +11,10 @@ type Config struct {
 	botToken         string
 	chatID           string
 	telegramEndpoint string
+	leaguesFile      string
+	client           *http.Client
+	season           string
+	timezone         string
 }
 
 func LoadConfig() Config {
@@ -18,6 +25,10 @@ func LoadConfig() Config {
 	c.botToken = os.Getenv("BOT_TOKEN")
 	c.chatID = os.Getenv("CHAT_ID")
 	c.telegramEndpoint = "https://api.telegram.org/bot%s/sendMessage"
+	c.leaguesFile = "./leagues.json"
+	c.client = &http.Client{}
+	c.season = os.Getenv("SEASON")
+	c.timezone = os.Getenv("TIMEZONE")
 
 	return c
 }

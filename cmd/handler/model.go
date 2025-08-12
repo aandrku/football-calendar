@@ -13,15 +13,17 @@ type Model struct {
 func (m Model) Format() string {
 	var str string
 	t := `
-	%s
-	%s - %s
+	_%s_
+	*%s* - *%s*
 
 	`
-	title := m.League
+
+	title := fmt.Sprintf("%s\n", m.League)
 	str += title
 
 	if len(m.Games) == 0 {
-		str += "\nNo games today"
+		str += "\n❌No games today❌\n\n"
+		str += "----------------------\n"
 		return str
 	}
 
@@ -29,6 +31,7 @@ func (m Model) Format() string {
 		str += fmt.Sprintf(t, v.Time.Format("3:04 PM"), v.Home, v.Away)
 	}
 
+	str += "----------------------\n"
 	return str
 }
 
