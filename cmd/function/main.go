@@ -2,28 +2,22 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"strings"
 	"sync"
 
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"log"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("There was an unrecoverable error: %v", err)
-	}
-
 	c := LoadConfig()
 	fn := function{
 		config: c,
@@ -63,17 +57,17 @@ func (fn function) handleRequest() {
 
 }
 
+//go:embed leagues.json
+var leaguesJSON []byte
+
 func (fn function) readLeagues() ([]League, error) {
 	var leagues []League
 
-	f, err := os.Open(fn.config.leaguesFile)
-	if err != nil {
-		return nil, err
-	}
+	r := bytes.NewReader(leaguesJSON)
 
-	dec := json.NewDecoder(f)
+	dec := json.NewDecoder(r)
 
-	err = dec.Decode(&leagues)
+	err := dec.Decode(&leagues)
 	if err != nil {
 		return nil, err
 	}
